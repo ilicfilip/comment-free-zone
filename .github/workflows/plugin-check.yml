@@ -20,7 +20,7 @@ jobs:
 
       - name: Build plugin archive
         run: |
-          wp package install wp-cli/dist-archive-command
+          wp package install wp-cli/dist-archive-command:^2
           wp dist-archive . ./comment-free-zone.zip
 
       - name: Run plugin check
