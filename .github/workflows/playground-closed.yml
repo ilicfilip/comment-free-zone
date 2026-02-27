@@ -1,0 +1,37 @@
+name: Playground Comment on Merge
+
+on:
+  pull_request:
+    types:
+      - closed
+
+jobs:
+  comment:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Post Playground comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const repo = context.repo.owner + '/' + context.repo.repo;
+            const playgroundUrl = `https://playground.wordpress.net/#{"networking":true,"login":true,"plugins":["https://github-proxy.com/proxy/?repo=${repo}&branch=develop"]}`;
+            const zipUrl = `https://github-proxy.com/proxy/?repo=${repo}&branch=develop`;
+
+            const body = [
+              '## Test the merged changes',
+              '',
+              `[<img src="https://raw.githubusercontent.com/nicehash/wp-playground-tools/refs/heads/main/assets/icon_wp_playground.png" height="36" />](${ playgroundUrl })`,
+              '',
+              `**[Open in WordPress Playground](${ playgroundUrl })** to test the merged changes live in the browser.`,
+              '',
+              `Or **[download the zip](${ zipUrl })** from the \`develop\` branch.`,
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
