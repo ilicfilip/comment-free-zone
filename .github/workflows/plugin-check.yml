@@ -21,9 +21,9 @@ jobs:
       - name: Build plugin archive
         run: |
           wp package install wp-cli/dist-archive-command:^2
-          wp dist-archive . ./comment-free-zone.zip
+          wp dist-archive . ./comment-free-zone --format=dir
 
       - name: Run plugin check
         uses: wordpress/plugin-check-action@v1.0.6
         with:
-          build-dir: ./comment-free-zone.zip
+          build-dir: ./comment-free-zone
