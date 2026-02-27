@@ -29,6 +29,8 @@ class Disable_Comments {
      */
 	public function __construct() {
 		add_action( 'init', [ $this, 'disable_comments' ] );
+		add_filter( 'rest_endpoints', [ $this, 'disable_comments_rest_api_endpoint' ] );
+		add_action( 'rest_api_init', [ $this, 'remove_comment_data_from_rest_api' ] );
 	}
 
     /**
@@ -65,6 +67,48 @@ class Disable_Comments {
 	}
 
     /**
+     * Disable the comments REST API endpoint.
+     *
+     * @param array $endpoints The REST API endpoints.
+     * @return array The modified endpoints.
+     */
+    public function disable_comments_rest_api_endpoint( $endpoints ) {
+		unset( $endpoints['/wp/v2/comments'] );
+		unset( $endpoints['/wp/v2/comments/(?P<id>[\d]+)'] );
+
+		return $endpoints;
+	}
+
+    /**
+     * Remove comment data from REST API responses for all post types.
+     */
+    public function remove_comment_data_from_rest_api() {
+		$post_types = get_post_types( [ 'show_in_rest' => true ] );
+		foreach ( $post_types as $post_type ) {
+			add_filter( "rest_prepare_{$post_type}", [ $this, 'remove_comment_data_from_rest_api_response' ], 10, 3 );
+		}
+	}
+
+    /**
+     * Remove comment data from a REST API response.
+     *
+     * @param \WP_REST_Response $response The response object.
+     * @param \WP_Post          $post     The post object.
+     * @param \WP_REST_Request  $request  The request object.
+     * @return \WP_REST_Response The modified response object.
+     */
+    public function remove_comment_data_from_rest_api_response( $response, $post, $request ) {
+		$data = $response->get_data();
+
+		unset( $data['comment_status'] );
+		unset( $data['ping_status'] );
+
+		$response->set_data( $data );
+
+		return $response;
+	}
+
+    /**
      * Remove the Comments column from the Pages list table.
      *
      * @param array $columns The columns of the Pages list table.
@@ -72,7 +116,7 @@ class Disable_Comments {
      */
     public function remove_comments_column_from_pages( $columns ) {
 	    unset( $columns[ 'comments' ] ); // Removes the Comments column.
-		
+
 	    return $columns;
 	}
 }
