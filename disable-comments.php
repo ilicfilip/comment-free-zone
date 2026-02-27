@@ -43,6 +43,15 @@ class Disable_Comments {
 		add_filter( 'comments_open', '__return_false', 20, 2 );
 		add_filter( 'pings_open', '__return_false', 20, 2 );
 
+		// Disable default comment & ping status.
+		add_filter(
+			'get_default_comment_status',
+			function () {
+				return 'closed';
+			},
+			999
+		);
+
    		// Disable outgoing pings
 		add_action( 'pre_ping', function() {
 		    return [];
@@ -61,7 +70,35 @@ class Disable_Comments {
 				remove_post_type_support( $post_type, 'comments' );
 				remove_post_type_support( $post_type, 'trackbacks' );
 			}
+
+			add_filter( "rest_{$post_type}_item_schema", [ $this, 'cleanup_rest_api_schema' ] );
+			add_filter( 'rest_prepare_' . $post_type, [ $this, 'cleanup_rest_prepare_post_type' ] );
 		}
+	}
+
+	/**
+	 * Remove comment_status and ping_status from the REST API schema.
+	 *
+	 * @param string[][] $schema The schema.
+	 *
+	 * @return string[][] The modified schema.
+	 */
+	public function cleanup_rest_api_schema( $schema ) {
+		unset( $schema['properties']['comment_status'] );
+		unset( $schema['properties']['ping_status'] );
+		return $schema;
+	}
+
+	/**
+	 * Remove the replies link from the REST API response.
+	 *
+	 * @param WP_REST_Response $response The response object.
+	 *
+	 * @return WP_REST_Response The modified response object.
+	 */
+	public function cleanup_rest_prepare_post_type( $response ) {
+		$response->remove_link( 'replies' );
+		return $response;
 	}
 
     /**
@@ -72,7 +109,7 @@ class Disable_Comments {
      */
     public function remove_comments_column_from_pages( $columns ) {
 	    unset( $columns[ 'comments' ] ); // Removes the Comments column.
-		
+
 	    return $columns;
 	}
 }
