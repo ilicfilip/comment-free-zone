@@ -22,57 +22,109 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+/**
+ * Disable comments and trackbacks in post types.
+ */
 class Disable_Comments {
 
-    /**
-     * Constructor.
-     */
+	/**
+	 * Constructor.
+	 */
 	public function __construct() {
 		add_action( 'init', [ $this, 'disable_comments' ] );
 	}
 
-    /**
-     * Disable comments and trackbacks in post types.
-     */
+	/**
+	 * Disable comments and trackbacks in post types.
+	 */
 	public function disable_comments() {
-        add_action( 'admin_menu', function() {
-		    remove_submenu_page( 'options-general.php', 'options-discussion.php' ); // Comments settings
-		    remove_submenu_page( 'options-general.php', 'options-writing.php' ); // Post settings
-		}, 999 );
+		add_action(
+			'admin_menu',
+			function () {
+				remove_submenu_page( 'options-general.php', 'options-discussion.php' ); // Comments settings.
+				remove_submenu_page( 'options-general.php', 'options-writing.php' ); // Post settings.
+			},
+			999
+		);
 		add_filter( 'manage_pages_columns', [ $this, 'remove_comments_column_from_pages' ] );
 		add_filter( 'comments_open', '__return_false', 20, 2 );
 		add_filter( 'pings_open', '__return_false', 20, 2 );
 
-   		// Disable outgoing pings
-		add_action( 'pre_ping', function() {
-		    return [];
-		});
+		// Disable default comment & ping status.
+		add_filter(
+			'get_default_comment_status',
+			function () {
+				return 'closed';
+			},
+			999
+		);
 
-   		// Disable incoming pingbacks
-		add_filter( 'xmlrpc_methods', function( $methods ) {
-		    unset( $methods[ 'pingback.ping' ] );
-		    return $methods;
-		});
+		// Disable outgoing pings.
+		add_action(
+			'pre_ping',
+			function () {
+				return [];
+			}
+		);
 
-        // Disable support for comments and trackbacks in post types.
+		// Disable incoming pingbacks.
+		add_filter(
+			'xmlrpc_methods',
+			function ( $methods ) {
+				unset( $methods['pingback.ping'] );
+				return $methods;
+			}
+		);
+
+		// Disable support for comments and trackbacks in post types.
 		$post_types = get_post_types();
 		foreach ( $post_types as $post_type ) {
 			if ( post_type_supports( $post_type, 'comments' ) ) {
 				remove_post_type_support( $post_type, 'comments' );
 				remove_post_type_support( $post_type, 'trackbacks' );
 			}
+
+			add_filter( "rest_{$post_type}_item_schema", [ $this, 'cleanup_rest_api_schema' ] );
+
+			// Remove replies link from REST API responses.
+			add_filter( 'rest_prepare_' . $post_type, [ $this, 'cleanup_rest_prepare_post_type' ] );
 		}
 	}
 
-    /**
-     * Remove the Comments column from the Pages list table.
-     *
-     * @param array $columns The columns of the Pages list table.
-     * @return array The modified columns.
-     */
-    public function remove_comments_column_from_pages( $columns ) {
-	    unset( $columns[ 'comments' ] ); // Removes the Comments column.
-		
-	    return $columns;
+	/**
+	 * Remove comment_status and ping_status from the REST API schema.
+	 *
+	 * @param string[][] $schema The schema.
+	 *
+	 * @return string[][] The modified schema.
+	 */
+	public function cleanup_rest_api_schema( $schema ) {
+		unset( $schema['properties']['comment_status'] );
+		unset( $schema['properties']['ping_status'] );
+		return $schema;
+	}
+
+	/**
+	 * Remove the replies link from the REST API response.
+	 *
+	 * @param WP_REST_Response $response The response object.
+	 *
+	 * @return WP_REST_Response The modified response object.
+	 */
+	public function cleanup_rest_prepare_post_type( $response ) {
+		$response->remove_link( 'replies' );
+		return $response;
+	}
+
+	/**
+	 * Remove the Comments column from the Pages list table.
+	 *
+	 * @param array $columns The columns of the Pages list table.
+	 * @return array The modified columns.
+	 */
+	public function remove_comments_column_from_pages( $columns ) {
+		unset( $columns['comments'] ); // Removes the Comments column.
+
+		return $columns;
 	}
 }
