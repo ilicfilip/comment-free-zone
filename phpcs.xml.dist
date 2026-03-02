@@ -147,4 +147,9 @@
 	<rule ref="WordPress.NamingConventions.PrefixAllGlobals">
 		<exclude-pattern>/tests/bootstrap\.php$</exclude-pattern>
 	</rule>
+
+	<!-- Main plugin file cannot follow class-based naming convention. -->
+	<rule ref="WordPress.Files.FileName.InvalidClassFileName">
+		<exclude-pattern>/disable-comments\.php$</exclude-pattern>
+	</rule>
 </ruleset>
